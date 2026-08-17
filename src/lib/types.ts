@@ -1,12 +1,25 @@
+export interface Teacher {
+  id: string;
+  full_name: string;
+  subject: string;
+  phone: string;
+  stages: ('ثانوي' | 'متوسط' | 'ابتدائي')[];
+  email?: string;
+  color?: string;
+  created_at?: string;
+}
+
 export interface Group {
   id: string;
   name: string;
   subject: string;
+  stage: 'ثانوي' | 'متوسط' | 'ابتدائي';
   grade_level: string;
   monthly_price: number;
+  teacher_id?: string;
   teacher_name?: string;
   room?: string;
-  schedule?: string; // e.g. "السبت 14:00 - 16:00، الثلاثاء 16:00 - 18:00"
+  schedule?: string;
   student_count?: number;
   created_at?: string;
 }
@@ -17,7 +30,9 @@ export interface Student {
   last_name: string;
   student_code: string;
   parent_phone: string;
-  enrolled_groups?: string[]; // array of group IDs
+  stage: 'ثانوي' | 'متوسط' | 'ابتدائي';
+  grade_level: string;
+  enrolled_groups?: string[];
   notes?: string;
   created_at?: string;
 }
@@ -37,6 +52,8 @@ export interface Grade {
   student_name: string;
   group_id: string;
   group_name: string;
+  subject: string;
+  teacher_name: string;
   exam_title: string;
   score: number;
   max_score: number;
