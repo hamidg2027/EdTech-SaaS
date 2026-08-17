@@ -103,7 +103,7 @@ export default function GradesPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {grades.map((g) => {
-              const pct = ((g.score / g.maxScore) * 100).toFixed(0);
+              const pct = ((g.score / g.max_score) * 100).toFixed(0);
               return (
                 <tr key={g.id} className="hover:bg-slate-50/80 transition-colors">
                   <td className="py-3.5 px-4 font-bold text-slate-800">{g.student_name}</td>
