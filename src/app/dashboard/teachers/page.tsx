@@ -75,7 +75,6 @@ export default function TeachersPage() {
           : [...current, stg]
       };
     });
-  }));
   }
 
   return (
