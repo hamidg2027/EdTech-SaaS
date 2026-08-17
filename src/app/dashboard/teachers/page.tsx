@@ -11,7 +11,10 @@ import {
   X, 
   ArrowRight,
   ExternalLink,
-  Briefcase
+  Briefcase,
+  Share2,
+  Copy,
+  Check
 } from 'lucide-react';
 import { initialTeachers, initialGroups } from '@/lib/mockData';
 import { Teacher, Group } from '@/lib/types';
@@ -22,6 +25,7 @@ export default function TeachersPage() {
   const [groups, setGroups] = useState<Group[]>(initialGroups);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deletingTeacher, setDeletingTeacher] = useState<Teacher | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -77,22 +81,30 @@ export default function TeachersPage() {
     });
   }
 
+  function copyTeacherLink(teacherId: string) {
+    const url = `${window.location.origin}/teacher/${teacherId}`;
+    navigator.clipboard.writeText(url);
+    setCopiedId(teacherId);
+    setTimeout(() => setCopiedId(null), 2500);
+  }
+
+  function shareTeacherWhatsApp(teacher: Teacher) {
+    const url = `${window.location.origin}/teacher/${teacher.id}`;
+    const cleanPhone = teacher.phone.replace(/[^0-9]/g, '');
+    const phoneFormatted = cleanPhone.startsWith('0') ? '213' + cleanPhone.substring(1) : cleanPhone;
+    const message = encodeURIComponent(`مرحباً أستاذ ${teacher.full_name}،\nهذا هو رابط بوابتك الخاصة لإدارة حصص مادة ${teacher.subject} ورصد درجات وملاحظات الطلاب في مركز النجاح:\n${url}`);
+    window.open(`https://wa.me/${phoneFormatted}?text=${message}`, '_blank');
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">هيئة التدريس والأساتذة</h2>
-          <p className="text-sm text-slate-500 mt-1">إدارة أساتذة المركز، تخصصات المواد، الأفواج المشرفين عليها، وبوابة الأستاذ الخاصة</p>
+          <p className="text-sm text-slate-500 mt-1">إرسال روابط البوابات الخاصة للأساتذة عبر واتساب، إدارة المواد، والأفواج</p>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/dashboard/teacher-portal"
-            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all"
-          >
-            <Briefcase className="w-4 h-4 text-emerald-400" />
-            <span>فتح بوابة الأستاذ</span>
-          </Link>
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-emerald-700/20 transition-all"
@@ -109,7 +121,7 @@ export default function TeachersPage() {
           const assignedGroups = groups.filter(g => g.teacher_id === teacher.id || g.teacher_name === teacher.full_name);
 
           return (
-            <div key={teacher.id} className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between hover:border-emerald-500/50 transition-all">
+            <div key={teacher.id} className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between hover:border-emerald-500/50 transition-all space-y-4">
               <div className="space-y-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -137,7 +149,7 @@ export default function TeachersPage() {
                     </a>
                   </div>
                   <div className="flex items-center justify-between text-slate-600">
-                    <span className="text-slate-400">الأطوار التعليمية:</span>
+                    <span className="text-slate-400">الأطوار:</span>
                     <div className="flex gap-1">
                       {(teacher.stages || []).map(stg => (
                         <span key={stg} className="bg-white border border-slate-200 text-[10px] font-bold text-slate-700 px-2 py-0.5 rounded-md">
@@ -149,7 +161,7 @@ export default function TeachersPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <span className="text-[11px] font-bold text-slate-400 block">الأفواج والمجموعات المسندة ({assignedGroups.length}):</span>
+                  <span className="text-[11px] font-bold text-slate-400 block">الأفواج المشرف عليها ({assignedGroups.length}):</span>
                   <div className="flex flex-wrap gap-1.5">
                     {assignedGroups.length > 0 ? (
                       assignedGroups.map(g => (
@@ -164,13 +176,33 @@ export default function TeachersPage() {
                 </div>
               </div>
 
-              <div className="pt-4 mt-5 border-t border-slate-100 flex items-center justify-between">
+              {/* Share & Actions */}
+              <div className="pt-4 border-t border-slate-100 space-y-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => shareTeacherWhatsApp(teacher)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 rounded-xl transition-all shadow-xs"
+                    title="إرسال الرابط مباشرة لحساب الأستاذ على واتساب"
+                  >
+                    <span>إرسال عبر واتساب 💬</span>
+                  </button>
+
+                  <button
+                    onClick={() => copyTeacherLink(teacher.id)}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all flex items-center gap-1"
+                    title="نسخ الرابط الخاص بالأستاذ"
+                  >
+                    {copiedId === teacher.id ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                    <span>{copiedId === teacher.id ? 'تم النسخ' : 'نسخ'}</span>
+                  </button>
+                </div>
+
                 <Link
-                  href={`/dashboard/teacher-portal?teacherId=${teacher.id}`}
-                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                  href={`/teacher/${teacher.id}`}
+                  target="_blank"
+                  className="w-full block text-center text-xs font-semibold text-slate-500 hover:text-slate-800 py-1"
                 >
-                  <span>دخول لوحة هذا الأستاذ</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  معاينة بوابة الأستاذ في صفحة جديدة ↗
                 </Link>
               </div>
             </div>
@@ -216,7 +248,7 @@ export default function TeachersPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">رقم الهاتف *</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">رقم الهاتف (لواتساب) *</label>
                   <input
                     type="tel"
                     required

@@ -15,7 +15,10 @@ import {
   Clock,
   BookOpen,
   MapPin,
-  FileText
+  FileText,
+  Share2,
+  Copy,
+  Check
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { initialStudents, initialGroups } from '@/lib/mockData';
@@ -33,6 +36,7 @@ export default function StudentsPage() {
   const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
   const [viewingScheduleStudent, setViewingScheduleStudent] = useState<Student | null>(null);
   const [selectedStudentQr, setSelectedStudentQr] = useState<Student | null>(null);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -40,20 +44,17 @@ export default function StudentsPage() {
     last_name: '',
     parent_phone: '',
     student_code: '',
+    stage: 'ثانوي' as 'ثانوي' | 'متوسط' | 'ابتدائي',
+    grade_level: '3 ثانوي (BAC)',
     enrolled_groups: [] as string[],
     notes: '',
   });
 
-  // Load from localStorage if present
   useEffect(() => {
     const saved = localStorage.getItem('cm_students');
-    if (saved) {
-      try { setStudents(JSON.parse(saved)); } catch(e){}
-    }
+    if (saved) try { setStudents(JSON.parse(saved)); } catch(e){}
     const savedGroups = localStorage.getItem('cm_groups');
-    if (savedGroups) {
-      try { setGroups(JSON.parse(savedGroups)); } catch(e){}
-    }
+    if (savedGroups) try { setGroups(JSON.parse(savedGroups)); } catch(e){}
   }, []);
 
   function saveStudentsToStorage(newList: Student[]) {
@@ -61,7 +62,6 @@ export default function StudentsPage() {
     localStorage.setItem('cm_students', JSON.stringify(newList));
   }
 
-  // Handle Add Student
   function handleAddStudent(e: React.FormEvent) {
     e.preventDefault();
     const newCode = formData.student_code.trim() || `STD-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -71,6 +71,8 @@ export default function StudentsPage() {
       last_name: formData.last_name.trim(),
       parent_phone: formData.parent_phone.trim(),
       student_code: newCode,
+      stage: formData.stage,
+      grade_level: formData.grade_level,
       enrolled_groups: formData.enrolled_groups,
       notes: formData.notes.trim(),
       created_at: new Date().toISOString(),
@@ -81,7 +83,6 @@ export default function StudentsPage() {
     setIsAddModalOpen(false);
   }
 
-  // Handle Edit Student
   function handleEditStudent(e: React.FormEvent) {
     e.preventDefault();
     if (!editingStudent) return;
@@ -94,6 +95,8 @@ export default function StudentsPage() {
           last_name: formData.last_name.trim(),
           parent_phone: formData.parent_phone.trim(),
           student_code: formData.student_code.trim() || s.student_code,
+          stage: formData.stage,
+          grade_level: formData.grade_level,
           enrolled_groups: formData.enrolled_groups,
           notes: formData.notes.trim(),
         };
@@ -106,7 +109,6 @@ export default function StudentsPage() {
     setEditingStudent(null);
   }
 
-  // Handle Delete Student
   function confirmDelete() {
     if (!deletingStudent) return;
     const updated = students.filter(s => s.id !== deletingStudent.id);
@@ -121,6 +123,8 @@ export default function StudentsPage() {
       last_name: student.last_name,
       parent_phone: student.parent_phone,
       student_code: student.student_code,
+      stage: (student.stage as 'ثانوي' | 'متوسط' | 'ابتدائي') || 'ثانوي',
+      grade_level: student.grade_level || '3 ثانوي (BAC)',
       enrolled_groups: student.enrolled_groups || [],
       notes: student.notes || '',
     });
@@ -132,6 +136,8 @@ export default function StudentsPage() {
       last_name: '',
       parent_phone: '',
       student_code: '',
+      stage: 'ثانوي',
+      grade_level: '3 ثانوي (BAC)',
       enrolled_groups: [],
       notes: '',
     });
@@ -139,14 +145,30 @@ export default function StudentsPage() {
 
   function toggleGroupEnrollment(groupId: string) {
     setFormData(prev => {
-      const exists = (prev.enrolled_groups || []).includes(groupId);
+      const current = prev.enrolled_groups || [];
+      const exists = current.includes(groupId);
       return {
         ...prev,
         enrolled_groups: exists 
-          ? prev.enrolled_groups.filter(id => id !== groupId)
-          : [...prev.enrolled_groups, groupId]
+          ? current.filter(id => id !== groupId)
+          : [...current, groupId]
       };
     });
+  }
+
+  function copyParentLink(code: string) {
+    const url = `${window.location.origin}/parent/${code}`;
+    navigator.clipboard.writeText(url);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2500);
+  }
+
+  function shareParentWhatsApp(student: Student) {
+    const url = `${window.location.origin}/parent/${student.student_code}`;
+    const cleanPhone = student.parent_phone.replace(/[^0-9]/g, '');
+    const phoneFormatted = cleanPhone.startsWith('0') ? '213' + cleanPhone.substring(1) : cleanPhone;
+    const message = encodeURIComponent(`السلام عليكم ورحمة الله،\nإليكم رابط المتابعة الأكاديمية وجدول الحصص الخاص بالطالب ${student.first_name} ${student.last_name} في مركز النجاح:\n${url}`);
+    window.open(`https://wa.me/${phoneFormatted}?text=${message}`, '_blank');
   }
 
   const filteredStudents = students.filter(s => 
@@ -162,7 +184,7 @@ export default function StudentsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">إدارة الطلاب</h2>
-          <p className="text-sm text-slate-500 mt-1">إضافة وتعديل وحذف الطلاب، عرض جداول الحصص الأسبوعية، وبطاقات QR</p>
+          <p className="text-sm text-slate-500 mt-1">إرسال تقارير المتابعة لأولياء الأمور عبر واتساب، إدارة البيانات، وجداول الحصص</p>
         </div>
         <button
           onClick={() => { resetForm(); setIsAddModalOpen(true); }}
@@ -196,13 +218,13 @@ export default function StudentsPage() {
           <table className="w-full text-right border-collapse text-sm">
             <thead>
               <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 text-xs font-semibold">
-                <th className="py-3.5 px-4">الطالب</th>
+                <th className="py-3.5 px-4">الطالب والطور</th>
                 <th className="py-3.5 px-4">الكود</th>
                 <th className="py-3.5 px-4">هاتف ولي الأمر</th>
                 <th className="py-3.5 px-4">الأفواج المسجل بها</th>
-                <th className="py-3.5 px-4 text-center">جدول التوقيت</th>
+                <th className="py-3.5 px-4 text-center">جدول الحصص</th>
                 <th className="py-3.5 px-4 text-center">رمز QR</th>
-                <th className="py-3.5 px-4 text-center">تقرير ولي الأمر</th>
+                <th className="py-3.5 px-4 text-center">إرسال لولي الأمر (واتساب)</th>
                 <th className="py-3.5 px-4 text-center">إجراءات</th>
               </tr>
             </thead>
@@ -212,9 +234,13 @@ export default function StudentsPage() {
 
                 return (
                   <tr key={student.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-slate-800">
-                      {student.first_name} {student.last_name}
-                      {student.notes && <span className="block text-[11px] text-slate-400 font-normal">{student.notes}</span>}
+                    <td className="py-3.5 px-4">
+                      <strong className="font-bold text-slate-800 block text-sm">
+                        {student.first_name} {student.last_name}
+                      </strong>
+                      <span className="text-[11px] text-slate-400">
+                        الطور {student.stage || 'الثانوي'} • {student.grade_level || '3 ثانوي (BAC)'}
+                      </span>
                     </td>
                     <td className="py-3.5 px-4">
                       <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-md font-bold">
@@ -264,16 +290,24 @@ export default function StudentsPage() {
                       </button>
                     </td>
 
-                    {/* Parent Report Link */}
+                    {/* Send WhatsApp to Parent */}
                     <td className="py-3.5 px-4 text-center">
-                      <Link
-                        href={`/parent/${student.student_code}`}
-                        target="_blank"
-                        className="inline-flex items-center gap-1 text-xs text-slate-700 hover:text-emerald-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg font-medium transition-colors"
-                      >
-                        <span>فتح التقرير</span>
-                        <ExternalLink className="w-3 h-3 text-slate-400" />
-                      </Link>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => shareParentWhatsApp(student)}
+                          className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 rounded-lg transition-colors"
+                          title="إرسال رابط التقرير مباشرة لواتساب ولي الأمر"
+                        >
+                          <span>واتساب 💬</span>
+                        </button>
+                        <button
+                          onClick={() => copyParentLink(student.student_code)}
+                          className="p-1 text-slate-400 hover:text-slate-700 rounded"
+                          title="نسخ رابط التقرير"
+                        >
+                          {copiedCode === student.student_code ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </td>
 
                     {/* Edit & Delete Actions */}
@@ -340,6 +374,32 @@ export default function StudentsPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">الطور التعليمي</label>
+                  <select
+                    value={formData.stage}
+                    onChange={(e) => setFormData({ ...formData, stage: e.target.value as 'ثانوي' | 'متوسط' | 'ابتدائي' })}
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="ثانوي">الطور الثانوي</option>
+                    <option value="متوسط">الطور المتوسط</option>
+                    <option value="ابتدائي">الطور الابتدائي</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">المستوى</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="3 ثانوي (BAC)"
+                    value={formData.grade_level}
+                    onChange={(e) => setFormData({ ...formData, grade_level: e.target.value })}
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">رقم هاتف ولي الأمر (واتساب) *</label>
                 <input
@@ -384,7 +444,7 @@ export default function StudentsPage() {
                 <label className="block text-xs font-semibold text-slate-700 mb-1">ملاحظات إضافية</label>
                 <input
                   type="text"
-                  placeholder="ملاحظات حول مستوى الطالب أو وضعه..."
+                  placeholder="ملاحظات حول مستوى الطالب..."
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
@@ -524,7 +584,7 @@ export default function StudentsPage() {
             </div>
             <h3 className="font-bold text-slate-800 text-base">تأكيد حذف الطالب</h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              هل أنت متأكد من رغبتك في حذف الطالب <strong>{deletingStudent.first_name} {deletingStudent.last_name}</strong>؟ سيتم إزالة جميع بيانات الحضور والدرجات المرتبطة به.
+              هل أنت متأكد من حذف <strong>{deletingStudent.first_name} {deletingStudent.last_name}</strong>؟
             </p>
             <div className="flex gap-2 pt-2">
               <button
@@ -598,14 +658,12 @@ export default function StudentsPage() {
             </div>
 
             <div className="pt-2 flex justify-between items-center border-t border-slate-100">
-              <Link
-                href={`/parent/${viewingScheduleStudent.student_code}`}
-                target="_blank"
-                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+              <button
+                onClick={() => shareParentWhatsApp(viewingScheduleStudent)}
+                className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-colors"
               >
-                <span>معاينة كما يراها ولي الأمر</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </Link>
+                إرسال الجدول لولي الأمر عبر واتساب 💬
+              </button>
               <button
                 onClick={() => setViewingScheduleStudent(null)}
                 className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl"

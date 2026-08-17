@@ -24,6 +24,7 @@ export default function GroupsPage() {
   const [students, setStudents] = useState<Student[]>(initialStudents);
   const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [selectedGroupDetails, setSelectedGroupDetails] = useState<Group | null>(null);
   const [deletingGroup, setDeletingGroup] = useState<Group | null>(null);
 
@@ -60,7 +61,7 @@ export default function GroupsPage() {
     const newGroup: Group = {
       id: `grp-${Date.now()}`,
       name: formData.name.trim(),
-      subject: formData.subject.trim() || selTeacher.subject,
+      subject: formData.subject.trim() || selTeacher?.subject || 'مادة تعليمية',
       stage: formData.stage,
       grade_level: formData.grade_level,
       monthly_price: Number(formData.monthly_price),
@@ -73,18 +74,49 @@ export default function GroupsPage() {
     };
 
     saveGroupsToStorage([...groups, newGroup]);
-    setFormData({
-      name: '',
-      subject: '',
-      stage: 'ثانوي',
-      grade_level: '3 ثانوي (BAC)',
-      monthly_price: 3000,
-      teacher_id: '',
-      teacher_name: '',
-      room: 'القاعة 1',
-      schedule: '',
-    });
     setIsAddModalOpen(false);
+  }
+
+  function openEditModal(group: Group) {
+    setEditingGroup(group);
+    setFormData({
+      name: group.name,
+      subject: group.subject,
+      stage: (group.stage as 'ثانوي' | 'متوسط' | 'ابتدائي') || 'ثانوي',
+      grade_level: group.grade_level,
+      monthly_price: group.monthly_price,
+      teacher_id: group.teacher_id || '',
+      teacher_name: group.teacher_name || '',
+      room: group.room || 'القاعة 1',
+      schedule: group.schedule || '',
+    });
+  }
+
+  function handleEditGroup(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingGroup) return;
+    const selTeacher = teachers.find(t => t.id === formData.teacher_id) || teachers.find(t => t.full_name === formData.teacher_name) || teachers[0];
+
+    const updated = groups.map(g => {
+      if (g.id === editingGroup.id) {
+        return {
+          ...g,
+          name: formData.name.trim(),
+          subject: formData.subject.trim() || selTeacher?.subject || g.subject,
+          stage: formData.stage,
+          grade_level: formData.grade_level,
+          monthly_price: Number(formData.monthly_price),
+          teacher_id: selTeacher?.id,
+          teacher_name: selTeacher ? selTeacher.full_name : formData.teacher_name.trim() || g.teacher_name,
+          room: formData.room.trim() || g.room,
+          schedule: formData.schedule.trim() || g.schedule,
+        };
+      }
+      return g;
+    });
+
+    saveGroupsToStorage(updated);
+    setEditingGroup(null);
   }
 
   function confirmDeleteGroup() {
@@ -100,7 +132,7 @@ export default function GroupsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">الأفواج والمجموعات</h2>
-          <p className="text-sm text-slate-500 mt-1">تنظيم الأفواج الدراسية حسب الأطوار (ثانوي / متوسط / ابتدائي) والأساتذة المشرفين</p>
+          <p className="text-sm text-slate-500 mt-1">إنشاء وتعديل الأفواج، تغيير أوقات الحصص، الأساتذة، والقاعات</p>
         </div>
         <button
           onClick={() => {
@@ -130,7 +162,7 @@ export default function GroupsPage() {
           const enrolledStudents = students.filter(s => (s.enrolled_groups || []).includes(grp.id));
 
           return (
-            <div key={grp.id} className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between hover:border-emerald-500/50 transition-all">
+            <div key={grp.id} className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between hover:border-emerald-500/50 transition-all space-y-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md">
@@ -141,25 +173,38 @@ export default function GroupsPage() {
                   </span>
                 </div>
 
-                <h3 className="text-base font-bold text-slate-800">{grp.name}</h3>
-                <p className="text-xs text-slate-500 flex items-center gap-1">
-                  <GraduationCap className="w-3.5 h-3.5 text-emerald-600" />
-                  المادة: <strong>{grp.subject}</strong> ({grp.teacher_name})
-                </p>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800">{grp.name}</h3>
+                    <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                      <GraduationCap className="w-3.5 h-3.5 text-emerald-600" />
+                      المادة: <strong>{grp.subject}</strong> ({grp.teacher_name})
+                    </p>
+                  </div>
+                  
+                  {/* Edit Button */}
+                  <button
+                    onClick={() => openEditModal(grp)}
+                    className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                    title="تعديل الفوج والتوقيت والأستاذ"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                </div>
 
                 <div className="p-3 bg-slate-50 rounded-2xl space-y-1 text-xs text-slate-600 border border-slate-100">
                   <div className="flex items-center gap-1.5 font-medium">
-                    <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                    <Clock className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
                     <span>{grp.schedule || 'لم يحدد التوقيت'}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-slate-400">
-                    <MapPin className="w-3.5 h-3.5" />
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>{grp.room || 'القاعة العامة'}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-5 mt-5 border-t border-slate-100 flex items-center justify-between">
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs text-slate-600 font-semibold">
                   <Users className="w-4 h-4 text-emerald-600" />
                   <span>{enrolledStudents.length} طلاب مسجلين</span>
@@ -174,7 +219,7 @@ export default function GroupsPage() {
                   </button>
                   <button
                     onClick={() => setDeletingGroup(grp)}
-                    className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg"
+                    className="p-1.5 text-slate-300 hover:text-rose-600 rounded-lg"
                     title="حذف الفوج"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -301,6 +346,127 @@ export default function GroupsPage() {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl text-xs transition-colors"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Group */}
+      {editingGroup && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <h3 className="font-bold text-slate-800 text-base">تعديل بيانات الفوج</h3>
+              <button onClick={() => setEditingGroup(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditGroup} className="space-y-4 pt-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">اسم الفوج</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">الأستاذ المشرف</label>
+                <select
+                  value={formData.teacher_id}
+                  onChange={(e) => {
+                    const tch = teachers.find(t => t.id === e.target.value);
+                    setFormData({
+                      ...formData,
+                      teacher_id: e.target.value,
+                      teacher_name: tch ? tch.full_name : '',
+                      subject: tch ? tch.subject : formData.subject
+                    });
+                  }}
+                  className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  {teachers.map(t => (
+                    <option key={t.id} value={t.id}>{t.full_name} ({t.subject})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">الطور التعليمي</label>
+                  <select
+                    value={formData.stage}
+                    onChange={(e) => setFormData({ ...formData, stage: e.target.value as 'ثانوي' | 'متوسط' | 'ابتدائي' })}
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="ثانوي">الطور الثانوي</option>
+                    <option value="متوسط">الطور المتوسط</option>
+                    <option value="ابتدائي">الطور الابتدائي</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">المستوى</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.grade_level}
+                    onChange={(e) => setFormData({ ...formData, grade_level: e.target.value })}
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">سعر الاشتراك (دج)</label>
+                  <input
+                    type="number"
+                    required
+                    value={formData.monthly_price}
+                    onChange={(e) => setFormData({ ...formData, monthly_price: Number(e.target.value) })}
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">القاعة</label>
+                  <input
+                    type="text"
+                    value={formData.room}
+                    onChange={(e) => setFormData({ ...formData, room: e.target.value })}
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">توقيت الحصص الأسبوعي (لتعديل الموعد)</label>
+                <input
+                  type="text"
+                  value={formData.schedule}
+                  onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
+                  className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-md shadow-emerald-700/20"
+                >
+                  حفظ التعديلات
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingGroup(null)}
                   className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl text-xs transition-colors"
                 >
                   إلغاء
