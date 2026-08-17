@@ -139,7 +139,7 @@ export default function StudentsPage() {
 
   function toggleGroupEnrollment(groupId: string) {
     setFormData(prev => {
-      const exists = prev.enrolled_groups.includes(groupId);
+      const exists = (prev.enrolled_groups || []).includes(groupId);
       return {
         ...prev,
         enrolled_groups: exists 
@@ -370,7 +370,7 @@ export default function StudentsPage() {
                     <label key={g.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={formData.enrolled_groups.includes(g.id)}
+                        checked={(formData.enrolled_groups || []).includes(g.id)}
                         onChange={() => toggleGroupEnrollment(g.id)}
                         className="rounded text-emerald-600 focus:ring-emerald-500"
                       />
@@ -475,7 +475,7 @@ export default function StudentsPage() {
                     <label key={g.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={formData.enrolled_groups.includes(g.id)}
+                        checked={(formData.enrolled_groups || []).includes(g.id)}
                         onChange={() => toggleGroupEnrollment(g.id)}
                         className="rounded text-emerald-600 focus:ring-emerald-500"
                       />

@@ -66,12 +66,16 @@ export default function TeachersPage() {
   }
 
   function toggleStage(stg: 'ثانوي' | 'متوسط' | 'ابتدائي') {
-    setFormData(prev => ({
-      ...prev,
-      stages: prev.stages.includes(stg)
-        ? prev.stages.filter(s => s !== stg)
-        : [...prev.stages, stg]
-    }));
+    setFormData(prev => {
+      const current = prev.stages || [];
+      return {
+        ...prev,
+        stages: current.includes(stg)
+          ? current.filter(s => s !== stg)
+          : [...current, stg]
+      };
+    });
+  }));
   }
 
   return (
@@ -136,7 +140,7 @@ export default function TeachersPage() {
                   <div className="flex items-center justify-between text-slate-600">
                     <span className="text-slate-400">الأطوار التعليمية:</span>
                     <div className="flex gap-1">
-                      {teacher.stages.map(stg => (
+                      {(teacher.stages || []).map(stg => (
                         <span key={stg} className="bg-white border border-slate-200 text-[10px] font-bold text-slate-700 px-2 py-0.5 rounded-md">
                           {stg}
                         </span>
@@ -242,7 +246,7 @@ export default function TeachersPage() {
                     <label key={stg} className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={formData.stages.includes(stg)}
+                        checked={(formData.stages || []).includes(stg)}
                         onChange={() => toggleStage(stg)}
                         className="rounded text-emerald-600 focus:ring-emerald-500"
                       />
