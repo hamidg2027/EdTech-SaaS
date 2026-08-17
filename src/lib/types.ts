@@ -3,7 +3,7 @@ export interface Teacher {
   full_name: string;
   subject: string;
   phone: string;
-  stages: ('ثانوي' | 'متوسط' | 'ابتدائي')[];
+  stages?: ('ثانوي' | 'متوسط' | 'ابتدائي')[];
   email?: string;
   color?: string;
   created_at?: string;
@@ -13,7 +13,7 @@ export interface Group {
   id: string;
   name: string;
   subject: string;
-  stage: 'ثانوي' | 'متوسط' | 'ابتدائي';
+  stage?: 'ثانوي' | 'متوسط' | 'ابتدائي' | string;
   grade_level: string;
   monthly_price: number;
   teacher_id?: string;
@@ -30,18 +30,18 @@ export interface Student {
   last_name: string;
   student_code: string;
   parent_phone: string;
-  stage: 'ثانوي' | 'متوسط' | 'ابتدائي';
-  grade_level: string;
+  stage?: 'ثانوي' | 'متوسط' | 'ابتدائي' | string;
+  grade_level?: string;
   enrolled_groups?: string[];
   notes?: string;
   created_at?: string;
 }
 
 export interface AttendanceRecord {
-  id: string;
-  session_date: string;
-  group_id: string;
-  student_id: string;
+  id?: string;
+  session_date?: string;
+  group_id?: string;
+  student_id?: string;
   status: 'present' | 'absent' | 'late' | 'excused';
   topic?: string;
 }

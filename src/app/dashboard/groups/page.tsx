@@ -12,15 +12,17 @@ import {
   Edit3, 
   Trash2, 
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  GraduationCap
 } from 'lucide-react';
-import { initialGroups, initialStudents } from '@/lib/mockData';
-import { Group, Student } from '@/lib/types';
+import { initialGroups, initialStudents, initialTeachers } from '@/lib/mockData';
+import { Group, Student, Teacher } from '@/lib/types';
 import Link from 'next/link';
 
 export default function GroupsPage() {
   const [groups, setGroups] = useState<Group[]>(initialGroups);
   const [students, setStudents] = useState<Student[]>(initialStudents);
+  const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedGroupDetails, setSelectedGroupDetails] = useState<Group | null>(null);
   const [deletingGroup, setDeletingGroup] = useState<Group | null>(null);
@@ -28,8 +30,10 @@ export default function GroupsPage() {
   const [formData, setFormData] = useState({
     name: '',
     subject: '',
-    grade_level: '3 ثانوي',
+    stage: 'ثانوي' as 'ثانوي' | 'متوسط' | 'ابتدائي',
+    grade_level: '3 ثانوي (BAC)',
     monthly_price: 3000,
+    teacher_id: '',
     teacher_name: '',
     room: 'القاعة 1',
     schedule: '',
@@ -37,13 +41,11 @@ export default function GroupsPage() {
 
   useEffect(() => {
     const saved = localStorage.getItem('cm_groups');
-    if (saved) {
-      try { setGroups(JSON.parse(saved)); } catch(e){}
-    }
+    if (saved) try { setGroups(JSON.parse(saved)); } catch(e){}
     const savedStudents = localStorage.getItem('cm_students');
-    if (savedStudents) {
-      try { setStudents(JSON.parse(savedStudents)); } catch(e){}
-    }
+    if (savedStudents) try { setStudents(JSON.parse(savedStudents)); } catch(e){}
+    const savedTeachers = localStorage.getItem('cm_teachers');
+    if (savedTeachers) try { setTeachers(JSON.parse(savedTeachers)); } catch(e){}
   }, []);
 
   function saveGroupsToStorage(newList: Group[]) {
@@ -53,13 +55,17 @@ export default function GroupsPage() {
 
   function handleCreateGroup(e: React.FormEvent) {
     e.preventDefault();
+    const selTeacher = teachers.find(t => t.id === formData.teacher_id) || teachers[0];
+
     const newGroup: Group = {
       id: `grp-${Date.now()}`,
       name: formData.name.trim(),
-      subject: formData.subject.trim(),
+      subject: formData.subject.trim() || selTeacher.subject,
+      stage: formData.stage,
       grade_level: formData.grade_level,
       monthly_price: Number(formData.monthly_price),
-      teacher_name: formData.teacher_name.trim() || 'أستاذ المادة',
+      teacher_id: selTeacher?.id,
+      teacher_name: selTeacher ? selTeacher.full_name : formData.teacher_name.trim() || 'أستاذ المادة',
       room: formData.room.trim() || 'القاعة 1',
       schedule: formData.schedule.trim() || 'يحدد لاحقاً',
       student_count: 0,
@@ -70,8 +76,10 @@ export default function GroupsPage() {
     setFormData({
       name: '',
       subject: '',
-      grade_level: '3 ثانوي',
+      stage: 'ثانوي',
+      grade_level: '3 ثانوي (BAC)',
       monthly_price: 3000,
+      teacher_id: '',
       teacher_name: '',
       room: 'القاعة 1',
       schedule: '',
@@ -92,10 +100,23 @@ export default function GroupsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">الأفواج والمجموعات</h2>
-          <p className="text-sm text-slate-500 mt-1">إنشاء وإدارة الأفواج الدراسية، أوقات الحصص، وأسعار الاشتراكات</p>
+          <p className="text-sm text-slate-500 mt-1">تنظيم الأفواج الدراسية حسب الأطوار (ثانوي / متوسط / ابتدائي) والأساتذة المشرفين</p>
         </div>
         <button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => {
+            setFormData({
+              name: '',
+              subject: teachers[0]?.subject || 'علوم الطبيعة والحياة',
+              stage: 'ثانوي',
+              grade_level: '3 ثانوي (BAC)',
+              monthly_price: 3000,
+              teacher_id: teachers[0]?.id || '',
+              teacher_name: teachers[0]?.full_name || '',
+              room: 'القاعة 1',
+              schedule: '',
+            });
+            setIsAddModalOpen(true);
+          }}
           className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-emerald-700/20 transition-all"
         >
           <Plus className="w-4 h-4" />
@@ -113,7 +134,7 @@ export default function GroupsPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md">
-                    {grp.grade_level}
+                    الطور {grp.stage || 'الثانوي'} • {grp.grade_level}
                   </span>
                   <span className="text-xs font-bold text-slate-700 font-mono">
                     {grp.monthly_price} دج / شهر
@@ -121,9 +142,12 @@ export default function GroupsPage() {
                 </div>
 
                 <h3 className="text-base font-bold text-slate-800">{grp.name}</h3>
-                <p className="text-xs text-slate-500">المادة: {grp.subject} • {grp.teacher_name}</p>
+                <p className="text-xs text-slate-500 flex items-center gap-1">
+                  <GraduationCap className="w-3.5 h-3.5 text-emerald-600" />
+                  المادة: <strong>{grp.subject}</strong> ({grp.teacher_name})
+                </p>
 
-                <div className="p-3 bg-slate-50 rounded-xl space-y-1 text-xs text-slate-600 border border-slate-100">
+                <div className="p-3 bg-slate-50 rounded-2xl space-y-1 text-xs text-slate-600 border border-slate-100">
                   <div className="flex items-center gap-1.5 font-medium">
                     <Clock className="w-3.5 h-3.5 text-emerald-600" />
                     <span>{grp.schedule || 'لم يحدد التوقيت'}</span>
@@ -186,47 +210,56 @@ export default function GroupsPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">الأستاذ المشرف والمادة</label>
+                <select
+                  value={formData.teacher_id}
+                  onChange={(e) => {
+                    const tch = teachers.find(t => t.id === e.target.value);
+                    setFormData({
+                      ...formData,
+                      teacher_id: e.target.value,
+                      teacher_name: tch ? tch.full_name : '',
+                      subject: tch ? tch.subject : formData.subject
+                    });
+                  }}
+                  className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  {teachers.map(t => (
+                    <option key={t.id} value={t.id}>{t.full_name} ({t.subject})</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">المادة الدراسية *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: علوم، رياضيات"
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">الطور التعليمي</label>
+                  <select
+                    value={formData.stage}
+                    onChange={(e) => setFormData({ ...formData, stage: e.target.value as 'ثانوي' | 'متوسط' | 'ابتدائي' })}
                     className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                  />
+                  >
+                    <option value="ثانوي">الطور الثانوي</option>
+                    <option value="متوسط">الطور المتوسط</option>
+                    <option value="ابتدائي">الطور الابتدائي</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">المستوى</label>
-                  <select
+                  <input
+                    type="text"
+                    required
+                    placeholder="3 ثانوي (BAC)"
                     value={formData.grade_level}
                     onChange={(e) => setFormData({ ...formData, grade_level: e.target.value })}
                     className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                  >
-                    <option value="3 ثانوي (BAC)">3 ثانوي (BAC)</option>
-                    <option value="2 ثانوي">2 ثانوي</option>
-                    <option value="1 ثانوي">1 ثانوي</option>
-                    <option value="4 متوسط (BEM)">4 متوسط (BEM)</option>
-                    <option value="3 متوسط">3 متوسط</option>
-                  </select>
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">أستاذ المادة</label>
-                  <input
-                    type="text"
-                    placeholder="مثال: أ. بن علي"
-                    value={formData.teacher_name}
-                    onChange={(e) => setFormData({ ...formData, teacher_name: e.target.value })}
-                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">سعر الاشتراك الشهري (دج)</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">سعر الاشتراك (دج) *</label>
                   <input
                     type="number"
                     required
@@ -235,26 +268,25 @@ export default function GroupsPage() {
                     className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-mono"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">القاعة</label>
+                  <input
+                    type="text"
+                    placeholder="القاعة 1"
+                    value={formData.room}
+                    onChange={(e) => setFormData({ ...formData, room: e.target.value })}
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">برنامج وتوقيت الحصص الأسبوعي</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">توقيت الحصص الأسبوعي</label>
                 <input
                   type="text"
                   placeholder="مثال: السبت 14:00 - 16:00 • الثلاثاء 16:00 - 18:00"
                   value={formData.schedule}
                   onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
-                  className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">القاعة</label>
-                <input
-                  type="text"
-                  placeholder="مثال: القاعة 1 أو القاعة 2"
-                  value={formData.room}
-                  onChange={(e) => setFormData({ ...formData, room: e.target.value })}
                   className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
@@ -287,7 +319,7 @@ export default function GroupsPage() {
               <div>
                 <h3 className="font-bold text-slate-800 text-lg">{selectedGroupDetails.name}</h3>
                 <span className="text-xs text-slate-400">
-                  {selectedGroupDetails.grade_level} • {selectedGroupDetails.teacher_name}
+                  الطور {selectedGroupDetails.stage} • {selectedGroupDetails.grade_level} • {selectedGroupDetails.teacher_name}
                 </span>
               </div>
               <button onClick={() => setSelectedGroupDetails(null)} className="text-slate-400 hover:text-slate-600">
